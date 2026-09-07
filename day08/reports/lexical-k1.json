@@ -1,0 +1,73 @@
+{
+  "scope": "lexical retrieval only; 5 teaching cases; no generation",
+  "top_k": 1,
+  "answerable_count": 4,
+  "unanswerable_count": 1,
+  "mean": {
+    "hit": 0.75,
+    "recall": 0.625,
+    "rr": 0.75
+  },
+  "cases": [
+    {
+      "id": "R1",
+      "question": "周末几点关门？",
+      "relevant_chunk_ids": [
+        "hours.md#1"
+      ],
+      "retrieved": [
+        "hours.md#1"
+      ],
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "R2",
+      "question": "wifi 免费吗？",
+      "relevant_chunk_ids": [
+        "services.md#2"
+      ],
+      "retrieved": [
+        "services.md#2"
+      ],
+      "hit": 1.0,
+      "recall": 1.0,
+      "rr": 1.0
+    },
+    {
+      "id": "R3",
+      "question": "WLAN 怎么用？",
+      "relevant_chunk_ids": [
+        "services.md#2"
+      ],
+      "retrieved": [],
+      "hit": 0.0,
+      "recall": 0.0,
+      "rr": 0.0
+    },
+    {
+      "id": "R4",
+      "question": "工作日和周末分别几点关门？",
+      "relevant_chunk_ids": [
+        "hours.md#1",
+        "hours.md#2"
+      ],
+      "retrieved": [
+        "hours.md#2"
+      ],
+      "hit": 1.0,
+      "recall": 0.5,
+      "rr": 1.0
+    },
+    {
+      "id": "R5",
+      "question": "火星今天多少度？",
+      "relevant_chunk_ids": [],
+      "retrieved": [
+        "services.md#1"
+      ],
+      "returned_candidate_on_unanswerable": true
+    }
+  ]
+}

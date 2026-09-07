@@ -1,0 +1,52 @@
+{
+  "scope": "scripted LangGraph workflow; no model calls",
+  "fault": false,
+  "passed": 4,
+  "total": 4,
+  "cases": [
+    {
+      "id": "A1",
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    },
+    {
+      "id": "A2",
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    },
+    {
+      "id": "A3",
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    },
+    {
+      "id": "A4",
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    }
+  ]
+}

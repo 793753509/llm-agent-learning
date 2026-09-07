@@ -1,0 +1,216 @@
+{
+  "generated_at": "2026-09-07T02:17:31.866942+00:00",
+  "scope": "local teaching integration checks; not live model quality or production load test",
+  "hybrid": false,
+  "passed": 30,
+  "total": 30,
+  "python": "3.10.9",
+  "versions": {
+    "langgraph": "1.2.11",
+    "mcp": "1.29.1",
+    "fastapi": "0.141.1"
+  },
+  "checks": [
+    {
+      "name": "北店 E101 排在首位",
+      "passed": true
+    },
+    {
+      "name": "门店范围仅北店",
+      "passed": true
+    },
+    {
+      "name": "默认不调用生成模型",
+      "passed": true
+    },
+    {
+      "name": "乘法工具",
+      "passed": true
+    },
+    {
+      "name": "真实 MCP 查询 T001",
+      "passed": true
+    },
+    {
+      "name": "越权无正文",
+      "passed": true
+    },
+    {
+      "name": "聊天不能直接写工单",
+      "passed": true
+    },
+    {
+      "name": "偏好影响摘录数量",
+      "passed": true
+    },
+    {
+      "name": "记忆重新打开可读",
+      "passed": true
+    },
+    {
+      "name": "记忆分用户",
+      "passed": true
+    },
+    {
+      "name": "记忆到期不可读",
+      "passed": true
+    },
+    {
+      "name": "记忆可删除",
+      "passed": true
+    },
+    {
+      "name": "未审批不产生工单表",
+      "passed": true
+    },
+    {
+      "name": "跨进程恢复审批",
+      "passed": true
+    },
+    {
+      "name": "重复审批及写入重放只有一条",
+      "passed": true
+    },
+    {
+      "name": "草稿变动使原审批失效",
+      "passed": true
+    },
+    {
+      "name": "可拒绝审批",
+      "passed": true
+    },
+    {
+      "name": "健康接口",
+      "passed": true
+    },
+    {
+      "name": "空问题返回422",
+      "passed": true
+    },
+    {
+      "name": "同会话并发计数不丢失",
+      "passed": true
+    },
+    {
+      "name": "SSE事件顺序",
+      "passed": true
+    },
+    {
+      "name": "接口异常不回显原文",
+      "passed": true
+    },
+    {
+      "name": "SSE失败不发done",
+      "passed": true
+    },
+    {
+      "name": "追踪记录错误且不写异常原文",
+      "passed": true
+    },
+    {
+      "name": "缺失usage不虚报零费用",
+      "passed": true
+    },
+    {
+      "name": "权限网关六例",
+      "passed": true
+    },
+    {
+      "name": "角色交接拒绝篡改",
+      "passed": true
+    },
+    {
+      "name": "Recall和Hit区分",
+      "passed": true
+    },
+    {
+      "name": "固定工作流四例通过",
+      "passed": true
+    },
+    {
+      "name": "故意缺失工具轨迹四例失败",
+      "passed": true
+    }
+  ],
+  "latency": {
+    "samples": 10,
+    "unit": "ms",
+    "method": "nearest rank",
+    "scope": "warm local knowledge query, includes graph/logging; excludes setup, MCP, generation and HTTP",
+    "p50": 1.2848339974880219,
+    "p95": 1.990417018532753
+  },
+  "day08_retrieval": {
+    "scope": "lexical retrieval only; 5 teaching cases; no generation",
+    "top_k": 1,
+    "answerable_count": 4,
+    "unanswerable_count": 1,
+    "mean": {
+      "hit": 0.75,
+      "recall": 0.625,
+      "rr": 0.75
+    },
+    "cases": [
+      {
+        "id": "R1",
+        "question": "周末几点关门？",
+        "relevant_chunk_ids": [
+          "hours.md#1"
+        ],
+        "retrieved": [
+          "hours.md#1"
+        ],
+        "hit": 1.0,
+        "recall": 1.0,
+        "rr": 1.0
+      },
+      {
+        "id": "R2",
+        "question": "wifi 免费吗？",
+        "relevant_chunk_ids": [
+          "services.md#2"
+        ],
+        "retrieved": [
+          "services.md#2"
+        ],
+        "hit": 1.0,
+        "recall": 1.0,
+        "rr": 1.0
+      },
+      {
+        "id": "R3",
+        "question": "WLAN 怎么用？",
+        "relevant_chunk_ids": [
+          "services.md#2"
+        ],
+        "retrieved": [],
+        "hit": 0.0,
+        "recall": 0.0,
+        "rr": 0.0
+      },
+      {
+        "id": "R4",
+        "question": "工作日和周末分别几点关门？",
+        "relevant_chunk_ids": [
+          "hours.md#1",
+          "hours.md#2"
+        ],
+        "retrieved": [
+          "hours.md#2"
+        ],
+        "hit": 1.0,
+        "recall": 0.5,
+        "rr": 1.0
+      },
+      {
+        "id": "R5",
+        "question": "火星今天多少度？",
+        "relevant_chunk_ids": [],
+        "retrieved": [
+          "services.md#1"
+        ],
+        "returned_candidate_on_unanswerable": true
+      }
+    ]
+  }
+}

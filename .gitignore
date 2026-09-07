@@ -1,0 +1,17 @@
+.DS_Store
+.idea/
+.venv/
+__pycache__/
+*.py[cod]
+.env
+api_key
+aliyun_api_key
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+/day03/demo-events.jsonl
+/day06/data/
+/day10/data/
+/day12/data/
+/day14/logs/
+/capstone/data/

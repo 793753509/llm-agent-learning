@@ -1,0 +1,44 @@
+[
+  {
+    "id": "north/booking.md#1",
+    "source": "north/booking.md",
+    "index": 1,
+    "branch": "north",
+    "text": "北店 E101 表示预约名额已满。请选择其他时段。"
+  },
+  {
+    "id": "north/booking.md#2",
+    "source": "north/booking.md",
+    "index": 2,
+    "branch": "north",
+    "text": "北店 E102 表示网络连接失败。请切换网络后重新预约。"
+  },
+  {
+    "id": "north/help.md#1",
+    "source": "north/help.md",
+    "index": 1,
+    "branch": "north",
+    "text": "北店预约失败时，请查看页面提示的错误编号，再联系前台。"
+  },
+  {
+    "id": "north/network.md#1",
+    "source": "north/network.md",
+    "index": 1,
+    "branch": "north",
+    "text": "北店 wifi 免费，连接方式请咨询前台。"
+  },
+  {
+    "id": "south/booking.md#1",
+    "source": "south/booking.md",
+    "index": 1,
+    "branch": "south",
+    "text": "南店 E101 表示账号未完成验证。请先验证手机号。"
+  },
+  {
+    "id": "south/network.md#1",
+    "source": "south/network.md",
+    "index": 1,
+    "branch": "south",
+    "text": "南店 wifi 每小时 5 元，连接方式请咨询前台。"
+  }
+]

@@ -1,0 +1,58 @@
+[project]
+name = "llm-agent-learning"
+version = "0.1.0"
+description = "A day-by-day learning project for building LLM agents."
+requires-python = ">=3.10"
+dependencies = [
+    "openai==3.7.0",
+    "pydantic==2.13.5",
+]
+
+[tool.uv]
+package = false
+# 当前项目的 Python 是 macOS x86_64；解析 RAG 依赖时也检查该平台的 wheel。
+required-environments = ["sys_platform == 'darwin' and platform_machine == 'x86_64'"]
+# 本机 Intel Python 使用二进制 wheel，避免为 MCP 的间接依赖编译 Rust。
+constraint-dependencies = ["cryptography<49"]
+
+[tool.pytest.ini_options]
+testpaths = ["day03/tests"]
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.format]
+# 教材保留教学排版；个人练习文件保持原样，仍参与 lint 和类型检查。
+exclude = ["*.md", "day03/playground.py"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["day03"]
+strict = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
+]
+rag = [
+    "fastembed>=0.7,<1",
+    "qdrant-client>=1.14,<2",
+]
+workflow = [
+    "langgraph>=1.0,<2",
+    "langgraph-checkpoint-sqlite>=3,<4",
+    "mcp>=1.28,<2",
+]
+api = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+    "httpx>=0.28,<1",
+]

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "R1",
+    "question": "周末几点关门？",
+    "relevant_chunk_ids": [
+      "hours.md#1"
+    ]
+  },
+  {
+    "id": "R2",
+    "question": "wifi 免费吗？",
+    "relevant_chunk_ids": [
+      "services.md#2"
+    ]
+  },
+  {
+    "id": "R3",
+    "question": "WLAN 怎么用？",
+    "relevant_chunk_ids": [
+      "services.md#2"
+    ]
+  },
+  {
+    "id": "R4",
+    "question": "工作日和周末分别几点关门？",
+    "relevant_chunk_ids": [
+      "hours.md#1",
+      "hours.md#2"
+    ]
+  },
+  {
+    "id": "R5",
+    "question": "火星今天多少度？",
+    "relevant_chunk_ids": []
+  }
+]
