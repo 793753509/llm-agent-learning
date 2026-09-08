@@ -1,0 +1,119 @@
+{
+  "generated_at": "2026-09-07T10:42:01.564032+00:00",
+  "dataset": "day14/datasets/agent_cases.json",
+  "workflow": "day10.graph_demo.run",
+  "scope": "scripted LangGraph workflow; no model calls",
+  "fault": true,
+  "passed": 0,
+  "total": 4,
+  "cases": [
+    {
+      "id": "A1",
+      "input": {
+        "a": 25,
+        "b": 3
+      },
+      "expected": "75",
+      "answer": "75",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": false,
+      "checks": {
+        "answer": true,
+        "tool_name": false,
+        "tool_args": false,
+        "path": false,
+        "budget": true
+      }
+    },
+    {
+      "id": "A2",
+      "input": {
+        "a": 0,
+        "b": 3
+      },
+      "expected": "0",
+      "answer": "0",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": false,
+      "checks": {
+        "answer": true,
+        "tool_name": false,
+        "tool_args": false,
+        "path": false,
+        "budget": true
+      }
+    },
+    {
+      "id": "A3",
+      "input": {
+        "a": -2,
+        "b": 4
+      },
+      "expected": "-8",
+      "answer": "-8",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": false,
+      "checks": {
+        "answer": true,
+        "tool_name": false,
+        "tool_args": false,
+        "path": false,
+        "budget": true
+      }
+    },
+    {
+      "id": "A4",
+      "input": {
+        "a": 12,
+        "b": 4
+      },
+      "expected": "48",
+      "answer": "48",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": false,
+      "checks": {
+        "answer": true,
+        "tool_name": false,
+        "tool_args": false,
+        "path": false,
+        "budget": true
+      }
+    }
+  ]
+}

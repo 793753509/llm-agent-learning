@@ -9,7 +9,7 @@ from openai import OpenAI
 
 
 DEFAULT_BASE_URL = (
-    "https://your-model-endpoint.example/"
+    "https://llm-dvre3q31s582vei3.cn-beijing.maas.aliyuncs.com/"
     "compatible-mode/v1"
 )
 BASE_URL = os.getenv("LLM_BASE_URL", DEFAULT_BASE_URL)

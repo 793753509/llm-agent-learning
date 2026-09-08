@@ -3,7 +3,7 @@
 from mcp.server.fastmcp import FastMCP
 
 from day05.rag_baseline import KNOWLEDGE_DIR, load_documents, retrieve, split_documents
-from day11.tickets import get_ticket as lookup_ticket
+from day12.tickets import get_ticket as lookup_ticket
 
 mcp = FastMCP("qinghe-study-room")
 DEMO_USER = "alice"  # 真实服务应从已验证的凭证取得身份。

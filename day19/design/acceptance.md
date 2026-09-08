@@ -1,15 +1,17 @@
 # 验收动作与证据
 
-执行 `uv run --group workflow --group api python -m day20.verify`。
+本文件是人工编写的验收计划。报告由 day21/verify.py 执行下列检查后生成，首次运行前可能不存在。
+
+执行 `uv run --group workflow --group api python -m day21.verify`。
 
 | 需求 | 实际检查 | 证据位置 |
 |---|---|---|
-| 检索 | 北店范围、E101 首位、默认预览 | day20/reports/local.json |
+| 检索 | 北店范围、E101 首位、默认预览 | day21/reports/local.json |
 | 工具 | 乘法、真实 MCP 读取、越权无正文 | 同上 |
 | 写入 | 新进程恢复、重复写入一条、内容变化被拒绝、可拒绝 | 同上 |
 | 偏好 | 重新打开读取、分用户、过期、删除、影响摘录数 | 同上 |
 | HTTP | 健康、422、同会话并发计数、SSE 顺序和错误 | 同上 |
-| 回归规则 | Day 08 手算指标、Day 13 正常与损坏轨迹 | 同上 |
+| 回归规则 | Day 08 手算指标、Day 14 正常与损坏轨迹 | 同上 |
 
 可选再加 `--group rag` 并给 verify 加 `--hybrid`，写入单独 hybrid 报告。
 两份都不调用生成模型。真实回答质量、拒答语义、费用、外部认证、并发审批、公网容量须另外验收。

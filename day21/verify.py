@@ -20,13 +20,13 @@ from fastapi.testclient import TestClient
 from capstone.core import ROOT, Engine
 from day08.eval_retrieval import evaluate as evaluate_retrieval
 from day08.eval_retrieval import metrics
-from day10.approval import execute, write_once
-from day12.memory import MemoryStore
-from day13.eval_agent import evaluate as evaluate_agent
-from day14.tracing import Trace, estimated_cost
-from day15.gateway import evaluate as evaluate_gateway
-from day16.roles import run as run_roles
-from day17.api import create_app
+from day11.approval import execute, write_once
+from day13.memory import MemoryStore
+from day14.eval_agent import evaluate as evaluate_agent
+from day15.tracing import Trace, estimated_cost
+from day16.gateway import evaluate as evaluate_gateway
+from day17.roles import run as run_roles
+from day18.api import create_app
 
 
 def verify(hybrid: bool = False) -> dict:
@@ -80,7 +80,7 @@ def verify(hybrid: bool = False) -> dict:
                 [
                     sys.executable,
                     "-m",
-                    "day10.approval",
+                    "day11.approval",
                     "approve",
                     "--task-id",
                     "approved",
@@ -223,19 +223,20 @@ def verify(hybrid: bool = False) -> dict:
     }
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--hybrid", action="store_true")
-    args = parser.parse_args()
-    # 未预期异常直接让命令失败，不会留下伪装成功的本次报告。
-    report = verify(args.hybrid)
-    stem = "hybrid" if args.hybrid else "local"
-    out = ROOT / "day20/reports" / f"{stem}.json"
-    out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+def write_report(report: dict, directory: Path = ROOT / "day21/reports") -> Path:
+    """把同一次执行的结果保存为 JSON 和 Markdown；首次运行自动建目录。"""
+    stem = "hybrid" if report["hybrid"] else "local"
+    out = directory / f"{stem}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     lines = [
         f"# 本地验收：{report['passed']}/{report['total']}",
         "",
         report["scope"],
+        "",
+        "来源：day21/verify.py 中人工编写的检查，由本次运行执行并判定；用例状态在临时目录创建。",
         "",
         "生成时间：" + report["generated_at"],
         "",
@@ -259,6 +260,16 @@ if __name__ == "__main__":
             "",
         ]
     )
-    out.with_suffix(".md").write_text("\n".join(lines))
+    out.with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")
+    return out
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--hybrid", action="store_true")
+    args = parser.parse_args()
+    # 未预期异常直接让命令失败，不会留下伪装成功的本次报告。
+    report = verify(args.hybrid)
+    out = write_report(report)
     print(f"{report['passed']}/{report['total']} 通过；报告：{out}")
     raise SystemExit(0 if report["passed"] == report["total"] else 1)

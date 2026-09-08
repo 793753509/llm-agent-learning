@@ -4,21 +4,24 @@
     "question": "周末几点关门？",
     "relevant_chunk_ids": [
       "hours.md#1"
-    ]
+    ],
+    "purpose": "直接问周末时间：检查基本检索。"
   },
   {
     "id": "R2",
     "question": "wifi 免费吗？",
     "relevant_chunk_ids": [
       "services.md#2"
-    ]
+    ],
+    "purpose": "沿用资料中的 wifi 措辞：检查基本检索。"
   },
   {
     "id": "R3",
     "question": "WLAN 怎么用？",
     "relevant_chunk_ids": [
       "services.md#2"
-    ]
+    ],
+    "purpose": "用 WLAN 换一种说法：观察关键词漏检。"
   },
   {
     "id": "R4",
@@ -26,11 +29,13 @@
     "relevant_chunk_ids": [
       "hours.md#1",
       "hours.md#2"
-    ]
+    ],
+    "purpose": "同时问工作日和周末：需要两块证据。"
   },
   {
     "id": "R5",
     "question": "火星今天多少度？",
-    "relevant_chunk_ids": []
+    "relevant_chunk_ids": [],
+    "purpose": "原文没有火星温度：观察无答案题是否仍返回候选。"
   }
 ]

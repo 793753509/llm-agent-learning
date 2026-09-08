@@ -14,7 +14,8 @@ class State(TypedDict):
     tool_result: int | None
     answer: str
     need_tool: bool
-    events: Annotated[list[dict], operator.add]
+    events: list[dict]
+    # events: Annotated[list[dict], operator.add]
 
 
 def decide(state: State) -> dict:

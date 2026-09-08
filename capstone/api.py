@@ -1,6 +1,6 @@
-"""复用 Day 17 的接口，回答函数换成项目引擎。"""
+"""复用 Day 18 的接口，回答函数换成项目引擎。"""
 
-from day17.api import create_app
+from day18.api import create_app
 
 from .core import Engine
 

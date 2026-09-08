@@ -1,0 +1,155 @@
+{
+  "generated_at": "2026-09-07T10:42:00.937440+00:00",
+  "dataset": "day14/datasets/agent_cases.json",
+  "workflow": "day10.graph_demo.run",
+  "scope": "scripted LangGraph workflow; no model calls",
+  "fault": false,
+  "passed": 4,
+  "total": 4,
+  "cases": [
+    {
+      "id": "A1",
+      "input": {
+        "a": 25,
+        "b": 3
+      },
+      "expected": "75",
+      "answer": "75",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "tool",
+          "name": "multiply",
+          "args": {
+            "a": 25,
+            "b": 3
+          },
+          "result": 75
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    },
+    {
+      "id": "A2",
+      "input": {
+        "a": 0,
+        "b": 3
+      },
+      "expected": "0",
+      "answer": "0",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "tool",
+          "name": "multiply",
+          "args": {
+            "a": 0,
+            "b": 3
+          },
+          "result": 0
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    },
+    {
+      "id": "A3",
+      "input": {
+        "a": -2,
+        "b": 4
+      },
+      "expected": "-8",
+      "answer": "-8",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "tool",
+          "name": "multiply",
+          "args": {
+            "a": -2,
+            "b": 4
+          },
+          "result": -8
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    },
+    {
+      "id": "A4",
+      "input": {
+        "a": 12,
+        "b": 4
+      },
+      "expected": "48",
+      "answer": "48",
+      "events": [
+        {
+          "node": "decide",
+          "action": "tool"
+        },
+        {
+          "node": "tool",
+          "name": "multiply",
+          "args": {
+            "a": 12,
+            "b": 4
+          },
+          "result": 48
+        },
+        {
+          "node": "decide",
+          "action": "answer"
+        }
+      ],
+      "passed": true,
+      "checks": {
+        "answer": true,
+        "tool_name": true,
+        "tool_args": true,
+        "path": true,
+        "budget": true
+      }
+    }
+  ]
+}

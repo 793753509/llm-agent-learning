@@ -1,5 +1,7 @@
 # 五分钟演示脚本
 
+本文件是人工编写的演示提纲。命令会实际执行，输出和验收数字以本次运行结果为准；示例任务编号由演示者填写。
+
 提前从项目根目录安装 workflow/api 依赖。全部使用虚构资料，不请求生成模型。
 演示编号 qh-demo-001 已存在时，换一个新编号；先执行 forget 恢复默认资料条数。
 
@@ -43,11 +45,11 @@ uv run --group workflow python -m capstone.main approve qh-demo-001
 ## 3:20～4:20 看验证与失败
 
 ```bash
-uv run --group workflow --group api python -m day20.verify
-uv run --group workflow python -m day13.eval_agent --fault
+uv run --group workflow --group api python -m day21.verify
+uv run --group workflow python -m day14.eval_agent --fault
 ```
 
-打开 day20/reports/local.md 和 day13/reports/fault.json。
+打开 day21/reports/local.md 和 day14/reports/fault.json。
 说：“删除工具轨迹后答案仍正确，但任务不合格。第二个命令返回失败是故意的故障实验。”
 
 ## 4:20～5:00 说限制

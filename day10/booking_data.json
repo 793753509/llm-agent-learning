@@ -1,0 +1,12 @@
+{
+  "bookings": {
+    "B001": {"booking_id": "B001", "error_code": "E101"}
+  },
+  "manuals": {
+    "E101": {
+      "error_code": "E101",
+      "source": "booking_data.json#manuals/E101",
+      "text": "E101 表示所选时段名额已满。可更换时段；如用户仍需人工协助，整理预约编号和失败原因供工作人员核对。"
+    }
+  }
+}

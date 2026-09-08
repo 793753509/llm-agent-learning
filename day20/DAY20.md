@@ -1,164 +1,224 @@
-# Day 20：让程序替你检查“刚才演示成功的事，现在还成功吗？”
+# Day 20：把前面的积木拼成一个能用的青禾助手
 
-> 今天运行一份真实验收脚本，读懂通过项、故障项、计时范围和未测内容。
-> 不再要求初学者先凭空准备“50+ 用例”和一套复杂压测平台。
+> 今天有完整参考代码，不要求你看着一张抽象目录图从零猜实现。
+> 先依次跑通查询、MCP、偏好、审批、HTTP；每次只增加一条链路。
 
-## 1. 先回答：测试通过究竟证明什么？
+## 开始前：输入、程序和产物
 
-“计算 25 × 3 返回 75”只能证明这一条路径的这次结果。
-它不能证明工单不会越权，也不能证明网络故障时一定可恢复。
+| 内容 | 来源与用途 |
+|---|---|
+| [capstone/main.py](../capstone/main.py)、[core.py](../capstone/core.py) | 已提供的入口与整合代码，复用前面课程模块 |
+| [Day 07 门店资料](../day07/knowledge.json)、[Day 12 工单](../day12/tickets.py) | 两组人工编写的只读输入 |
+| `capstone/data/` | 程序运行后保存偏好、审批和日志；首次使用会创建 |
 
-所以我们把一件大事拆成可观察的检查：
+`lexical` 表示关键词检索，`hybrid` 表示关键词与向量组合；它们描述查资料的方法。
+
+## 1. 今天到底要完成什么？
+
+用同一个 CLI 完成：
 
 ```text
-检索选对北店资料了吗？
-越权请求泄露正文了吗？
-新进程能继续批准原草稿吗？
-同一动作重复写入会多一条吗？
-HTTP 空问题是否被拒绝？
+查北店 E101 的处理说明
+查 alice 的 T001 工单
+保存“简短”偏好，再看到更少的候选摘录
+准备草稿 → 关掉进程 → 批准 → 重复批准仍不重复写入
 ```
 
-测试集越小，结论范围就越小。报告要把范围写在成绩旁边。
+最后启动同一引擎的 HTTP 接口。
+这些都在 `capstone/`，它通过 import 复用前面课程的代码。
 
-## 2. 先运行完整的本地验收
+## 2. 准备环境，先不接模型
 
 ```bash
-uv run --group workflow --group api python -m day20.verify
+uv sync --locked --group workflow --group api
+uv run --group workflow python -m capstone.main ask "E101 预约失败怎么办？"
 ```
 
-程序会打印通过数量，生成：
+输出应包含：
 
 ```text
-day20/reports/local.json  完整机器可读结果
-day20/reports/local.md    适合直接阅读的结果
+route: retrieve
+mode: extractive_preview
+retrieval: lexical
+sources 首项: north/booking.md#1
+answer: 包含北店 E101 原文及来源
+trace_id: 本次工作流编号
 ```
 
-代码会真的调用 LangGraph、MCP 子进程、SQLite 和 FastAPI TestClient。
-审批还会启动另一个 Python 进程恢复，避免只验证“同一进程里的变量还在”。
-所有状态放在临时目录，用完清理，不改你的 capstone/data 练习草稿。
+这是候选资料预览，需要核对原文是否回答问题；不是假装由模型生成的答案。
+代码已经把北店 E101 精确匹配放到前面，重排算法来自 Day 07。
 
-如果某条检查失败，命令以非零状态退出；未预期异常也会使命令失败，不会伪装为通过。
-若程序中途崩溃，旧报告可能仍在，所以先确认本次命令正常写出了报告，别误读旧文件。
+## 3. 一次问答经过哪些代码？
 
-## 3. 测的是什么层？
+先开 `capstone/core.py`，从 `Engine.answer()` 开始看：
 
-| 层 | 本次实际做的事 | 没证明的事 |
+```text
+检查问题长度
+创建 Trace
+把初始 State 交给 LangGraph
+route_request 选择路线
+search 或 tool 执行
+把 response 加上 route 和 trace_id 返回
+```
+
+这里的 route_request 是正则/字符串规则，不是模型思考。
+例如 `查工单 T001` 必须符合“查工单 + 空格 + T编号”的格式。
+暂时先接受明确格式，能把错误限制在单独一层。
+
+## 4. 连接真实 MCP 与计算工具
+
+```bash
+uv run --group workflow python -m capstone.main ask "查工单 T001"
+uv run --group workflow python -m capstone.main ask "查工单 T002"
+uv run --group workflow python -m capstone.main ask "计算 25 * 3"
+```
+
+T001：route=get_ticket，MCP 子进程真正被调用，显示处理中。
+T002：返回 not_found_or_forbidden，不能看到 bob 的工单正文。
+计算：route=multiply，result.value=75。
+
+执行顺序是先 Day 16 检查工具参数/资源权限，再在允许时调用 Day 12 MCP。
+服务端读取时仍检查 owner，不能只信客户端说“我已经检查过”。
+
+当前一次请求只选一条路线、执行最多一个业务工具，不支持自由多步规划。
+
+## 5. 保存一个偏好，观察输出真的变化
+
+```bash
+uv run --group workflow python -m capstone.main remember 简短
+uv run --group workflow python -m capstone.main ask "E101 预约失败怎么办？"
+uv run --group workflow python -m capstone.main forget
+```
+
+简短偏好生效后，知识查询最多取一条原文；默认最多两条。
+这是一条可观察的规则，不依赖模型是否恰好按要求写得短。
+
+项目使用 `capstone/data/memory.sqlite`，不会自动读取 Day 13 的练习数据库。
+偏好一天后过期；可以再次 remember。这里只接入 style，未接入 language 或完整聊天历史。
+
+减少上下文条数可能让需要多条证据的问题缺资料，这是当前实现的取舍，不能为了简短牺牲事实完整性而不评估。
+
+## 6. 准备草稿，再明确批准
+
+```bash
+uv run --group workflow python -m capstone.main draft qh-001 "北店 E101 预约失败，请前台协助。"
+uv run --group workflow python -m capstone.main show qh-001
+uv run --group workflow python -m capstone.main approve qh-001
+uv run --group workflow python -m capstone.main approve qh-001
+```
+
+依次看到 waiting_approval → 仍待审批 → created_locally → 仍已完成。
+新建另一份草稿可用 `reject 新编号` 拒绝。
+编号重复 start 会被拒绝；重新做实验就换 qh-002。
+
+项目调用 Day 11 的 execute，因此保存、摘要核对、重复写入保护不需要再写一遍。
+
+**这里新建的模拟工单只在本地表里，不会同步给 Day 12 的静态 T001/T002 数据。**
+读写使用不同教学存储，是当前作品明确的限制。后续要统一工单服务才能支持“创建后立即用 MCP 查询”。
+
+## 7. 加入真正的本地向量检索
+
+你已经完成 Day 06 的模型下载后，可以运行：
+
+```bash
+uv run --group workflow --group rag python -m capstone.main ask "E101 预约失败怎么办？" --hybrid
+```
+
+这会复用 Day 06 的本地 Embedding 模型、建立北店内存 Qdrant 索引，
+再执行关键词 + 向量 → RRF → 错误码规则重排 → 上下文选择。
+
+第一次可能需要下载权重或加载模型；这仍不是生成模型回答。
+当前只有几条资料，为教学每次 CLI 启动重建内存索引。大语料应复用持久化索引。
+
+## 8. 什么时候才调用真正的生成模型？
+
+在你已配好 Day 03 模型服务的前提下：
+
+```bash
+uv run --group workflow python -m capstone.main ask "E101 预约失败怎么办？" --ask-model
+```
+
+也可以同时打开两个开关：
+
+```bash
+uv run --group workflow --group rag python -m capstone.main ask "E101 预约失败怎么办？" --hybrid --ask-model
+```
+
+`--ask-model` 复用 Day 05 的生成函数，请求当前配置的服务，会消耗相应 API 额度。
+问题与选中资料会进入这次请求；不是把整个本地数据库上传。
+
+生成分支仍需要人工核对引用和拒答。现有自动报告没有测真实回答语义、费用和引用支持性。
+只开 --hybrid 与只开 --ask-model 的作用不同，请自己画出两个开关的位置。
+
+## 9. 同一引擎接 HTTP
+
+```bash
+uv run --group workflow --group api uvicorn capstone.api:app --host 127.0.0.1 --port 8000
+```
+
+若 Day 18 的服务还占着 8000，先 Ctrl+C 停止那个服务。
+另一个终端请求：
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' -d '{"session_id":"s1","question":"E101 预约失败怎么办？"}'
+```
+
+API 默认用关键词、无生成模型，复用 Day 18 的 /health、/chat、/events。
+现在问题里若写“创建工单”，只返回去 CLI 准备审批的提示，不会执行写入。
+API session 仅计数，不意味着能理解“那它呢”。
+
+## 10. 看一次实际数据流
+
+| 位置 | 此时有什么 | 模型是否参与 |
 |---|---|---|
-| 小函数 | 手算指标、权限规则 | 任意输入都无错误 |
-| 组件组合 | 检索→路由→工具→存储 | 真实企业服务可用 |
-| 协议 | 真 MCP stdio 和本机 ASGI 请求 | 公网链路/认证/代理行为 |
-| 流程恢复 | 新进程批准草稿并检查唯一写入 | 并发审批/外部写入一致性 |
-| 模型 | 本次不调用生成模型 | 回答质量、费用、模型波动 |
+| question | E101 预约失败怎么办？ | 无 |
+| chunks | 仅北店原文 | 无 |
+| candidates | 关键词结果或双路融合结果 | hybrid 使用本地 Embedding |
+| results | 去重并放得进预算的原文 | 无 |
+| answer | 摘录，或根据原文生成的回答 | 仅 ask-model 调用生成模型 |
 
-FastAPI TestClient 在进程内发请求，不需要真的监听 8000 端口。
-Day 17/19 的 curl 实验补上实际监听与 HTTP 通信的观察。
+`1200` 是 input 字符预算，不是 token 预算，沿用 Day 07 的实现。
+没有任何候选时返回 no_evidence，不请求生成模型；但有候选也不保证资料中存在答案。
 
-## 4. 重点读这五项检查
+## 11. 出错时按入口排查
 
-### 北店 E101 首位
+| 问题 | 优先检查 |
+|---|---|
+| 缺少 langgraph/mcp | 运行命令是否带 --group workflow |
+| 缺少 fastembed/qdrant | hybrid 时是否带 --group rag |
+| 工单查询变成资料检索 | 是否按“查工单 T001”格式输入 |
+| 检索结果与教程数量不同 | 是否还保存了简短偏好 |
+| 查询服务不可用 | 先用 MCP client 单独查 T001 |
+| 草稿 ID 冲突 | show 原任务，或换新 ID |
 
-输入固定问题，检查第一条来源为 north/booking.md#1。
-它检查检索结果，而不是模型是否忠实回答。
-
-### 越权无正文
-
-查 T002，要求结果恰好是通用错误，不能夹带 bob 的 title 或其他字段。
-只检查“有 error 字段”不够，因为错误对象也可能同时泄露正文。
-
-### 重复写入只有一条
-
-批准后重复批准，再直接重放同一份已批准写入；最后查本地表只有一条。
-这覆盖 Day 10 讨论的“写入已成功，完成快照尚未保存”的关键风险。
-
-### 同会话并发计数
-
-四个请求一起到来，返回 turn 应是 1、2、3、4，没有重复或遗漏。
-它检查单进程会话锁，不代表多个服务器之间也有这个保证。
-
-### 流式失败
-
-故意让回答函数抛异常，要求 SSE 发 error、不发 done，且不把私有异常原文暴露出去。
-这是真实执行的故障注入，不是报告里手填“已经考虑异常”。
-
-## 5. 为什么要故意让代码坏一次？
-
-一个评估器如果无论怎样都通过，就没有筛错能力。
-本次同时验证：
-
-```text
-Day 13 正常轨迹：四题通过
-Day 13 删除工具事件：四题失败
-```
-
-后者的失败是预期行为，因此“验收评估器能发现故障”这一项应通过。
-要区分“被测试案例按预期失败”与“整个验收脚本失败”。
-
-## 6. Recall 报告为什么不是最终项目的总成绩？
-
-JSON 中附有 Day 08 的关键词检索结果，资料来自 Day 05。
-最终项目使用 Day 07 的门店资料，数据和编号不同。
-因此 Day 08 的平均值只作为独立教学基线，不能拿来声称最终项目的 Recall。
-
-最终项目目前检查固定 E101 首位和范围，尚未建立足够多的门店标注题。
-下一步应新增那套数据集，再谈最终项目检索质量的提升百分比。
-
-## 7. p50、p95 是怎样来的？
-
-程序启动好引擎后，对同一个知识问题执行 10 次，把毫秒数从小到大排列。
-采用 nearest-rank 方法：
-
-```text
-p50 = 排序后第 ceil(10 × 0.50) = 第 5 个
-p95 = 排序后第 ceil(10 × 0.95) = 第 10 个
-```
-
-示例数据 1、2、3、4、5、6、7、8、9、20 毫秒：p50=5，p95=20。
-实际数值看你的报告，不复制这个示例当成绩。
-
-这个样本太小，p95 就是最大值，很不稳定；只适合观察方法。
-计时包含一次图执行、查询和本地日志；不包含引擎初始化、MCP、HTTP 或生成模型。
-没有负载并发，也没有代表真实问题分布，所以不是生产延迟承诺。
-
-## 8. 可选：也验收真实向量分支
+CLI 默认把数据写到 capstone/data。想单独练习：
 
 ```bash
-uv run --group workflow --group api --group rag python -m day20.verify --hybrid
+uv run --group workflow python -m capstone.main --data-dir /tmp/qinghe-my-practice ask "E101 怎么办？"
 ```
 
-生成 hybrid.json 与 hybrid.md。
-它真的用本地 Embedding 和 Qdrant；仍然不调用生成模型。
-首建库时间不计入热查询指标，注意和启动速度区分。
+`--data-dir` 放在子命令 ask/draft 之前。
 
-并非每个项目都应该用向量：还要检查效果、加载时间、内存和维护成本。
-这份小报告用于确认集成线路正常，没有足够样本证明整体优于关键词。
+## 真实场景里怎么用
 
-## 9. 接真实模型前，先准备一张人工检查表
+真实项目也常先把一条完整业务路径接通，再替换其中的模拟数据与固定规则。例如先保留已验证的工具入口，把静态工单改成真实服务；每替换一层，就用同一批验收输入检查旧功能是否仍正常。
 
-| 问题 | 实际证据 | 实际回答 | 核对结果 |
-|---|---|---|---|
-| E101 怎么处理 | 北店 E101 原文 | 运行后填写 | 是否有来源且结论受原文支持 |
-| 资料没有的问题 | 记录返回候选 | 运行后填写 | 是否承认不知道 |
-| 多条资料有冲突 | 准备冲突原文 | 运行后填写 | 是否指出冲突 |
+## 12. 今天的练习与终点
 
-记录模型配置、日期、调用次数、原始指标和失败例。
-没有运行的格子保持空白；不拿确定性小程序的 100% 替代真实模型分数。
-
-## 10. 练习与答案
-
-1. 十条已排序延迟的第十条特别慢，p50 一定变大吗？
-2. verify 全通过，能否写“公网支持 1000 并发”？
-3. 若新改路由导致工单问题走检索，优先看哪条检查？
+1. 能否在不打开生成模型的情况下使用真实向量库？
+2. 为什么查到 T001 不等于实现了企业登录？
+3. 给 route_request 加一个新规则前，先写哪种测试输入？
 
 <details>
 <summary>参考答案</summary>
 
-1. 不一定，本例 p50 看第 5 条。
-2. 不能，没有做这种负载测试或公网验证。
-3. “真实 MCP 查询 T001”；随后看 route 和输入格式，而不是先调向量模型。
+1. 可以，只开 --hybrid。
+2. 身份固定为 alice，没有验证真实用户凭证。
+3. 至少写一个命中新规则的输入，以及一个不应误命中的旧输入，跑回归检查。
 
 </details>
 
-核心完成标准：运行报告、解释三个检查、指出两个未测能力，并正确限定延迟数字的适用范围。
-改完代码先运行相关检查；不用为了显得专业重复跑毫无新增信息的测试。
+核心完成标准：查询、MCP、偏好、审批、HTTP 都跑一遍；能指出每段复用哪一天。
+真实模型生成作为有配置后再做的扩展，不阻碍你先学会整个工程链路。
 
 [上一课：Day 19](../day19/DAY19.md) · [下一课：Day 21](../day21/DAY21.md)

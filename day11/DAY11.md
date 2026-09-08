@@ -1,168 +1,188 @@
-# Day 11：让两个 Python 程序用 MCP 查一张工单
+# Day 11：关掉程序后，再回来批准同一份工单
 
-> 今天不先背协议。你将启动一个客户端，由它启动服务端，真实调用 `get_ticket`。
-> 服务端只读虚构数据，默认身份固定为 alice；不用模型、不用 API Key。
+> 今天做一个真实的暂停与恢复实验：草稿先存下来，批准后才写入本地模拟工单表。
+> 全部数据在本机 SQLite 文件里，不会给任何人发消息或创建外部工单。
 
-## 1. 原来函数就在项目里，为什么还要 MCP？
+## 开始前：输入、程序和产物
 
-在同一个文件中，你可以直接写 `get_ticket("T001")`。
-但如果工具由另一个程序提供，你需要回答：怎么发现工具？参数是什么？怎么发送请求？结果怎么返回？
-
-MCP 给应用与工具服务约定了这些交互方式。
-它不负责算出答案，也不要求工具代码内部必须调用大模型。
-
-```text
-用户问工单 → 应用决定查 get_ticket → MCP Client → MCP Server → 工单数据
-                                                      ↓
-用户看到状态 ← 应用整理结果 ← MCP 返回值 ← 运行 Python 函数
-```
-
-今天把“应用决定查工具”写死，让你先看到线路确实通了。
-模型选工具属于 Day 02/04 学过的能力，两件事可以组合，但不是同一个概念。
-
-## 2. 一条命令开始
-
-```bash
-uv run --group workflow python -m day11.client T001
-```
-
-成功输出里应有：
-
-```text
-tools: 包含 get_ticket、search_notes
-ticket: id=T001，owner=alice，status=处理中
-resource: 演示服务说明
-```
-
-客户端会启动子进程 `python -m day11.server`，完成后关闭连接并收回子进程。
-无需先在另一个终端启动 Server，也无需配置端口。
-
-再跑：
-
-```bash
-uv run --group workflow python -m day11.client T002
-```
-
-T002 属于 bob，返回 `not_found_or_forbidden`。不是查到一个 ID 就能读。
-
-## 3. 四个文件分别干什么？
-
-| 文件 | 可以先找的函数 | 职责 |
-|---|---|---|
-| tickets.py | get_ticket | 在虚构字典里查数据并检查 owner |
-| server.py | 带装饰器的 get_ticket | 把函数登记为 MCP 工具 |
-| client.py | interact | 连接、初始化、列工具、调用、读资源 |
-| DAY11.md | 本文 | 对照每步输入输出 |
-
-先看 tickets.py：它只有 T001、T002 两条记录。
-服务端固定当前演示用户是 alice，因此客户端没有 `user_id` 参数可以随意冒充 bob。
-这只是本地演示约定；远程服务必须真的验证身份，不能把固定字符串当登录系统。
-
-## 4. 一次调用拆成六步
-
-| 步骤 | 对应代码 | 看得见的含义 |
-|---|---|---|
-| 1 | StdioServerParameters | 告诉客户端怎样启动服务端 |
-| 2 | stdio_client | 接通标准输入和标准输出的两条通道 |
-| 3 | ClientSession | 在通道上建立一次协议会话 |
-| 4 | initialize | 双方先确认协议会话信息与能力 |
-| 5 | list_tools | 获得工具名、描述、参数 Schema |
-| 6 | call_tool | 按名称传参数，获取结果 |
-
-我们另外调用 `read_resource("study://rules")` 读取说明。
-
-`stdio` 是进程的标准输入/输出；这里的数据由客户端写进去、服务端读出来。
-它不是 HTTP，也不是向量数据库。MCP 还可使用其他传输方式，今天先用最容易观察的本地方式。
-
-SDK 版本固定在 `<2` 的 v1 系列，接口以 [官方 v1 Python SDK](https://github.com/modelcontextprotocol/python-sdk/tree/v1.x) 为准。
-
-## 5. Server 上的装饰器在做什么？
-
-```python
-@mcp.tool()
-def get_ticket(ticket_id: str) -> dict:
-    return lookup_ticket(ticket_id, DEMO_USER)
-```
-
-把 `@mcp.tool()` 看成“把下面这个函数登记到工具菜单”。
-参数类型 `str` 和函数说明用于描述工具输入；工具执行仍是普通 Python 函数。
-
-客户端会收到类似这样的工具参数要求：
-
-```json
-{
-  "type": "object",
-  "properties": {"ticket_id": {"type": "string"}},
-  "required": ["ticket_id"]
-}
-```
-
-这是 Schema 的简化示意，实际输出可能还有 title 等字段。
-模型以后可以根据这个菜单提出调用；应用仍需检查调用能不能执行。
-
-## 6. Tool、Resource、Prompt 不要混在一起
-
-| 类型 | 青禾例子 | 你如何使用 |
-|---|---|---|
-| Tool | get_ticket(ticket_id) | 传参数，请服务端执行一个动作 |
-| Resource | study://rules | 按 URI 读取一份内容 |
-| Prompt | “按模板写工单摘要” | 取一份可复用的提示模板 |
-
-本例实际实现两个 Tool 和一个 Resource，没有实现 Prompt 模板。
-工具也可以是只读查询；不能把“Tool”理解为“一定修改数据”。
-
-## 7. async、await、async with 用人话解释
-
-```python
-async with ClientSession(read, write) as session:
-    await session.initialize()
-    result = await session.call_tool("get_ticket", {"ticket_id": "T001"})
-```
-
-- `async def` 定义可等待的函数。
-- `await` 等待远端这一步完成，再使用结果。
-- `async with` 进入连接上下文，离开时清理连接。
-- 最外层 `asyncio.run(...)` 把异步入口跑起来。
-
-不是加上 async 就会自动并发。这里几步有依赖，必须顺序执行。
-`fetch()` 给整个操作设了 20 秒上限，避免教学命令无限等待。
-
-## 8. 调试时最常踩的坑
-
-| 现象 | 先检查 |
+| 内容 | 来源与用途 |
 |---|---|
-| ModuleNotFoundError: mcp | 命令有没有 `--group workflow` |
-| Server 一直等待 | 你直接运行了 Server；试着运行 Client |
-| 协议解析失败 | Server 是否往 stdout print 了调试文字 |
-| T002 查不到 | 本课 alice 无权访问 bob 的记录，是预期结果 |
-| 工具名改了就失败 | Client 的 call_tool 名称也要对应修改 |
+| [approval.py](approval.py) | 课程提供的暂停、恢复与写入程序 |
+| task-id、draft、批准/拒绝 | 由你输入；草稿不是模型自动生成的 |
+| `data/checkpoints.sqlite`、`data/tickets.sqlite` | 程序自动建库，分别保存流程快照和获批工单，跨进程保留 |
 
-Server 的 stdout 要留给协议消息。若需要日志，写 stderr。
-工具返回的业务错误和协议调用错误也要区分：
-T002 的 `error` 在工具结果中；工具执行异常则可能让 MCP 的 `isError` 为真。
+## 1. 为什么不能问完“同意吗”就一直等？
 
-## 9. 练习：改一处，做一个自己的实验
+青禾自习室用户说：“北店 E101 预约失败，帮我登记一下。”
+程序准备好草稿，工作人员可能十分钟后才批准。
+中间关掉终端怎么办？只把草稿放在 Python 变量里，退出就丢了。
 
-在 client.py 的 `call_tool` 那行临时改成：
+我们需要记住三件事：草稿内容、执行到了哪里、这是谁的哪次任务。
 
-```python
-result = await session.call_tool("search_notes", {"query": "wifi 免费吗？"})
+| 术语 | 今天对应的实物 |
+|---|---|
+| State | 草稿、摘要、批准结果、状态这些字段 |
+| Checkpoint | 保存到 SQLite 的流程快照 |
+| Interrupt | 到审批位置暂停，先把控制权还给调用者 |
+| thread_id | 找回这一条流程的编号，例如 booking-001 |
+| Resume | 对同一编号提供审批决定，继续运行 |
+
+这里 `thread_id` 是我们教学程序的任务编号，不是 Codex App 的任务 ID。
+
+## 2. 先把完整过程跑一遍
+
+从项目根目录执行，每一条命令都会启动一个新的 Python 进程：
+
+```bash
+uv run --group workflow python -m day11.approval start --task-id booking-001 --draft "北店 E101 预约失败，请协助处理。"
+uv run --group workflow python -m day11.approval show --task-id booking-001
+uv run --group workflow python -m day11.approval approve --task-id booking-001
+uv run --group workflow python -m day11.approval approve --task-id booking-001
 ```
 
-返回结果会从“工单对象”变成“资料列表”；变量 `ticket` 的名字也应改成 `notes`，避免误导。
-先只观察，再恢复原文件，Day 19 会复用默认查工单入口。
+第一次看到 `status: waiting_approval`，`next` 中有 `review`。
+第三次看到 `status: created_locally`，`next: []`。
+第四次仍是完成状态，工单不会多一条。
 
-思考：为什么要先 list_tools？为什么 get_ticket 不接受 user_id？
+关掉终端再执行 show 也能看到状态，因为数据在：
+
+```text
+day11/data/checkpoints.sqlite  保存流程状态
+day11/data/tickets.sqlite      保存批准后的模拟工单
+```
+
+目录已加入 `.gitignore`。数据库没有部署到模型服务器；本课也没有请求生成模型。
+重新从头练习时换一个 `--task-id`。同一编号 start 两次会报错，避免覆盖旧草稿。
+
+## 3. 看清楚两条路
+
+```mermaid
+flowchart LR
+    D[输入草稿] --> R[review：暂停等审批]
+    R -->|批准| W[commit：写本地工单]
+    R -->|拒绝| X[reject：记录拒绝]
+    W --> E[结束]
+    X --> E
+```
+
+再练习拒绝：
+
+```bash
+uv run --group workflow python -m day11.approval start --task-id booking-002 --draft "请检查预约失败。"
+uv run --group workflow python -m day11.approval reject --task-id booking-002
+```
+
+结果应为 `rejected`，不会进入 commit。
+“拒绝”也是一次有记录的结果，不是直接把整个进程报错退出。
+
+## 4. interrupt 为什么看起来像函数返回？
+
+打开 `day11/approval.py` 的 `review()`：
+
+```python
+decision = interrupt({
+    "operation_id": state["operation_id"],
+    "draft": state["draft"],
+    "digest": state["digest"],
+    "question": "是否写入这份本地模拟工单？",
+})
+```
+
+首次运行时并没有得到 decision。框架保存快照，把待审批内容交回调用者。
+
+当 CLI 执行 approve 时，它找到同一个 thread_id：
+
+```python
+saved_digest = snapshot.values["digest"]
+graph.invoke(Command(resume={"approved": True, "digest": saved_digest}), config)
+```
+
+恢复时，review 节点会从头执行；这次 interrupt 才返回提供的 decision。
+所以不要把“创建工单”放在 interrupt 前面，否则恢复时可能再创建一次。
+
+这些暂停与恢复行为依据 [LangGraph Interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)；持久化概念见 [Persistence](https://docs.langchain.com/oss/python/langgraph/persistence)。
+
+## 5. 批准的是哪一份内容？
+
+只记录 `approved=True` 不够。如果批准后有人把草稿换了，批准就对应不上。
+
+今天保存 `digest`，即草稿的 SHA-256 摘要。把它理解成“这份文字的指纹”：
+
+```text
+草稿 A → 摘要 A → 展示并批准 A → 写入前重新算摘要 → 一致才写
+```
+
+这里没有让模型提供批准结果。批准来自你手动运行的本地 CLI 命令。
+摘要用来绑定内容，不是登录凭证，也不能代替权限检查。
+真实多人系统还需要已验证的审批人身份和可批准范围；本课是单用户本地实验。
+
+## 6. 幂等到底是什么？
+
+不用先记这个词。先看两种行为：
+
+```text
+同一个动作请求来两次 → 创建两张工单：会重复
+同一个动作请求来两次 → 仍只有同一张工单：本课希望的行为
+```
+
+我们给动作一个 `operation_id`，本课复用 task-id。
+数据库把它设为唯一主键。相同编号、相同摘要重复写入时忽略；不同摘要则拒绝。
+
+```sql
+operation_id TEXT PRIMARY KEY
+```
+
+唯一约束是在数据库层落实的，不是只靠“先查一下好像不存在”。
+
+为什么已经有 checkpoint 还需要它？可能“工单已写入，但完成快照还没保存”时程序崩溃。
+恢复后再次走 commit，唯一编号可以挡住重复写入。
+
+这只保证本地示例表里的同一动作不重复。若接外部工单服务，需要对方也支持幂等键，或另外设计一致性流程。
+
+## 7. 按这个顺序读代码
+
+1. `main()`：把命令行参数取出来。
+2. `execute()`：找到数据库和 task-id，决定开始、查看还是恢复。
+3. `build_graph()`：拼出上面的分支图。
+4. `review()`：暂停并检查审批内容。
+5. `write_once()`：核对摘要、执行数据库唯一写入。
+
+`with SqliteSaver.from_conn_string(...)` 表示在这个代码块里使用保存器，退出时释放连接。
+保存器需要一直活到图执行完；不能先退出 with，再拿图去运行。
+
+## 8. 常见卡点
+
+| 现象 | 原因 / 下一步 |
+|---|---|
+| 没有这个任务 | task-id 写错，或还没 start |
+| task-id 已存在 | 用 show 查看；新草稿换新 ID |
+| 一直 waiting_approval | start 只准备草稿，还没运行 approve/reject |
+| 拒绝后 approve 没重新创建 | 流程已经结束；修改意图应建立新任务 |
+| 跨进程找不到状态 | 检查是否用了不同的 `--data-dir` |
+
+可以用 `--data-dir /tmp/qinghe-approval-practice` 单独练习，避免混入已有示例任务。
+本例按串行命令教学，不承诺多个进程同时审批的竞争处理。
+
+## 真实场景里怎么用
+
+真实工单系统通常先展示草稿，再记录审批决定，后台据此执行写入。审批可能跨越页面关闭或服务重启，所以需要持久化；调用外部服务时，还要使用稳定的动作编号处理重试。今天把这条链缩小到两份本地 SQLite 文件。
+
+## 9. 练习与答案
+
+1. 用新 ID 创建草稿，只 show 三次，会生成工单吗？
+2. 为什么不能在模型工具参数里增加 `approved: true` 就算获批？
+3. 在纸上画出“写入成功、快照未保存、重试”的三步，指出哪一层防重复。
 
 <details>
 <summary>参考答案</summary>
 
-list_tools 用来发现能力与输入约定；不是靠猜测另一个程序的函数。
-user_id 应从可信身份上下文取得，而不是让模型在参数里随意声明自己是谁。
+1. 不会。show 是读状态，写入在批准分支。
+2. 模型的建议不是人的审批；执行入口必须从可信的审批流程读决定。
+3. 工单表的 operation_id 唯一约束；checkpoint 负责恢复位置，职责不同。
 
 </details>
 
-核心完成标准：能查 T001、观察 T002 被拒绝，并指出 Client/Server 各自运行在哪里。
-进阶再学远程 Streamable HTTP、连接复用、认证与分页。本地 stdio 跑通不代表已做完这些能力。
+完成标准：亲手跑通批准、拒绝、重复批准，能解释两个 SQLite 文件各存什么。
+进阶再做远程审批 UI、并发竞争、审批过期和外部服务幂等。
 
 [上一课：Day 10](../day10/DAY10.md) · [下一课：Day 12](../day12/DAY12.md)

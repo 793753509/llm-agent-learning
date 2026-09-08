@@ -3,8 +3,8 @@
 在 llm-agent-learning 目录运行：uv run python -m day04.agent_practice
 配置沿用 Day 03；不需要安装新依赖，也不要把密钥写进这个文件。
 
-按 TODO 1～7 填写，用你的代码替换对应的 NotImplementedError。
-现在只是骨架，遇到“尚未完成”提示是正常的；填写后运行会消耗模型额度。
+这是个人练习文件；TODO 1～7 是各步的说明，当前已有实现。
+可以对照 day04/chat_agent.py 检查自己的写法；运行会消耗模型额度。
 只练核心流程：不做异步、历史裁剪、文件存储、复杂异常处理。
 
 手工验收（在同一次运行中依次输入）：
@@ -82,9 +82,9 @@ def calculator(operation: str, a: float, b: float) -> any:
 
 
 # 重要概念
-# 1、turn：每一次请求大模型都有一个turn，每次响应也有一个turn，不管是大模型响应还是工具响应
-# 2、 history：初始化turn，用于读取session中的turn
-# 3、chat函数只会在没有任何工具调用要执行时才会退出，退出之前更新一下session就行了
+# 1、turn：一次用户提问到最终回答的完整轮次，可能包含多次模型请求和工具结果。
+# 2、history：把 session 中已完成的轮次展开，作为本次请求的旧上下文。
+# 3、chat 得到最终回答才把完整 turn 保存到 session；异常或超过步数也会退出。
 
 def chat(question: str, session: ChatSession, client: OpenAI) -> str:
     """完成一次用户提问，返回最终回答；中间可以请求模型多次。"""

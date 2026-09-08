@@ -1,190 +1,191 @@
-# Day 09：用一张流程图，让程序先算账、再回答
+# Day 09：用 LangChain 接起模型与工具
 
-> 今天只学会 State、Node、Edge 和 Reducer 各自在程序里干什么。
-> 附带程序真的使用 LangGraph；“下一步做什么”先用确定规则决定，不请求模型。
+> 今天把 Day 02 的工具循环交给 LangChain，再把 Day 05 的检索器包成工具。
+> 先跑预设回复，确认谁在执行；有服务配置后再切换真实模型。下一课学习 LangGraph。
 
-## 1. 一个能在纸上跑的任务
+## 1. 为什么现在学 LangChain？
 
-青禾自习室有 25 张桌子，每桌坐 3 人，总共多少人？
+你已经知道如何请求模型、执行工具和检索资料。再搭第二个助手时，往往又要写一遍“找工具调用、执行、把结果送回模型”的循环。
 
-你可以直接写 `25 * 3`。今天故意分成三步，是为了观察 Day 02 的 Agent Loop：
+LangChain 提供模型接口、工具封装和现成 Agent 循环，让这些通用代码可以复用。你仍然负责工具实际做什么、资料从哪里来，以及怎样判断结果正确。
 
-```text
-检查有没有计算结果 → 调用乘法工具 → 读取结果并回答 75
-```
+| 名称 | 解决什么问题 | 本课对应什么 |
+|---|---|---|
+| LangChain | 怎样较快地接起模型和工具？ | `create_agent` 组织工具循环 |
+| LangGraph | 怎样明确控制状态、分支和暂停恢复？ | 下一课从节点和边开始学习 |
 
-后面接真实模型时，“检查”这个位置可以换成模型决定是否使用工具。
-框架只负责按我们写好的图调度，不会凭空获得推理能力。
+LangChain 的 Agent 底层使用 LangGraph。以后需要自定义流程时，可以直接操作 LangGraph；两者也可以组合使用。[官方定位](https://docs.langchain.com/oss/python/concepts/products)
 
-## 2. 安装并运行
+本课先使用现成循环；[下一课开头的关系图](../day10/DAY10.md)会说明，怎样从 LangChain 的 `create_agent` 过渡到自己定义 LangGraph 流程。
 
-从项目根目录运行。依赖组已写在项目配置中，无需再次 uv add：
+## 2. 先认识五个词
+
+| 词或写法 | 简单含义 |
+|---|---|
+| `ChatOpenAI` | LangChain 的模型适配器，负责把统一消息格式转成服务请求 |
+| `@tool` | 把 Python 函数包装成带名称、说明和参数约定的工具 |
+| `create_agent` | 创建包含模型调用、工具执行和结果回传的 Agent |
+| `invoke` | 运行这个模型、工具或 Agent；调用谁，执行的范围就不同 |
+| `messages` | 消息列表，保存用户问题、模型工具请求、工具结果和最终回复 |
+
+工具装饰后，用 `multiply.invoke({"a": 25, "b": 3})` 单独执行；这只运行乘法，不会调用模型。
+`agent.invoke(...)` 则运行整个 Agent 循环，内部可能多次调用模型。
+
+**工具循环**是指：请求模型，若它要求用工具，就执行工具、带着结果再次请求模型；直到模型不再要求工具而给出最终回答。这个循环由 `create_agent` 内部实现，所以本课主程序里看不到手写的 `while`。
+
+## 3. 文件、问题和结果分别从哪来？
+
+| 内容 | 来源与用途 |
+|---|---|
+| [langchain_agent.py](langchain_agent.py) | 课程参考代码，定义两个工具、Agent 入口与三个固定实验 |
+| [demo_model.py](demo_model.py) | 人工编写的测试替身，预先指定工具请求，再用固定模板展示实际工具结果 |
+| Day 03 的 `calculator` | 已有的普通 Python 计算函数，本课乘法工具复用它 |
+| [Day 05 原文](../day05/knowledge/)与检索器 | 已有的真实本地文件和关键词检索实现 |
+| 终端消息 | LangChain 本次执行后返回的消息；本课不保存评估报告或历史数据库 |
+
+**预设回复不理解问题。** `--case` 选择人写好的问题和工具参数；乘法与文件检索真实执行，最终文字由固定模板拼接工具结果。它帮助检查框架流程，不能用于评价模型能力。
+
+## 4. 先跑乘法，观察一次完整循环
+
+从项目根目录执行，新增的 `langchain` 依赖组会安装 LangChain 及模型适配器：
 
 ```bash
-uv sync --locked --group workflow
-uv run --group workflow python -m day09.graph_demo
-uv run --group workflow python -m day09.graph_demo 12 4
+uv run --group langchain python -m day09.langchain_agent --case math
 ```
 
-第一条运行结果中，应看到：
+首次需要安装依赖，之后实验本身无需 Key，也不请求模型服务。关键过程如下，省略部分 JSON 字段：
 
 ```text
-a = 25，b = 3
-tool_result = 75
-answer = "75"
-events 的顺序：decide/tool → tool/multiply → decide/answer
+用户：精确计算 25 乘 3。
+工具请求：multiply，参数 a=25、b=3，编号 demo-call-1
+工具结果：result=75，关联编号 demo-call-1
+最终回复：预设回复实验结束，实际工具返回：……75……
 ```
 
-第二次答案应为 `48`。它是一次新运行，没有沿用上一次的 75。
+这次循环中，替身会被调用两次：
 
-文件只有一个：`day09/graph_demo.py`。先找到 `run()` 看传入的数据。
+```text
+第一次调用替身：提出 multiply 请求
+          ↓
+LangChain 找到 multiply 并执行 Python 函数
+          ↓
+LangChain 把实际结果包装为 ToolMessage，再次调用替身
+          ↓
+第二次调用替身：用固定模板展示结果，不再请求工具，循环结束
+```
 
-## 3. State：流转中的一张表
+工具调用名称和参数来自预设数据；数字 75 来自乘法代码；调用和结果之间的传递由 LangChain 完成。
 
-不要把 State 想象成神秘对象。今天它就是字典：
+如果第二次回复仍有工具请求，框架就继续执行并再次调用模型。因此一次 `agent.invoke()` 可以包含多次模型调用；本例执行一次工具，调用两次替身。
+
+## 5. 看代码：哪些由框架接手了？
+
+先在 `langchain_agent.py` 找两个工具。乘法的关键代码是：
 
 ```python
-{
-    "a": 25,
-    "b": 3,
-    "tool_result": None,
-    "answer": "",
-    "need_tool": False,
-    "events": []
-}
+@tool
+def multiply(a: Number, b: Number) -> dict:
+    """精确计算两个 -1000 到 1000 之间整数的乘积。"""
+    return calculator("multiply", a, b)
 ```
 
-| 字段 | 人话 | 初始值 |
+`Number` 是本课定义的类型约束：严格整数，范围 -1000～1000。函数名成为工具名，文档字符串说明用途，参数标注帮助生成 Schema；装饰器没有生成乘法算法。[工具说明](https://docs.langchain.com/oss/python/langchain/tools)
+
+再看 `build_agent()` 中的主体，省略调用上限配置：
+
+```python
+agent = create_agent(
+    model=model,
+    tools=[multiply, search_knowledge],
+    system_prompt=SYSTEM_PROMPT,
+)
+result = agent.invoke({
+    "messages": [{"role": "user", "content": "精确计算 25 乘 3。"}]
+})
+```
+
+本课运行接口依据 [LangChain Agent 文档](https://docs.langchain.com/oss/python/langchain/agents)，完整实现以源码为准。
+
+| Day 02 自己写的部分 | 本课由谁负责 |
+|---|---|
+| 请求模型，读取工具名称和参数 | `create_agent` 与模型适配器 |
+| 按名称找函数，执行后继续循环 | `create_agent` |
+| 组织工具结果并关联调用编号 | LangChain 的工具消息 |
+| 乘法、读文件、检索算法 | 我们编写的工具函数 |
+| 权限、业务审批、效果评估 | 仍需应用设计，后续课程分别实现 |
+
+“少写了循环”不等于“一次请求就完成”，也不等于工具一定选择正确。
+
+## 6. 再把检索器变成一个工具
+
+```bash
+uv run --group langchain python -m day09.langchain_agent --case knowledge
+uv run --group langchain python -m day09.langchain_agent --case missing
+```
+
+| 实验 | 人工预设的查询 | 工具实际结果 |
 |---|---|---|
-| a、b | 两个待相乘的数 | 25、3 |
-| tool_result | 工具算出的数 | None：还没算 |
-| answer | 准备交给用户的文字 | 空字符串 |
-| need_tool | 接下来要不要调用工具 | False |
-| events | 这次经过哪些步骤 | 空列表 |
+| knowledge | 周末几点关门？ | 返回 `hours.md#1` 等候选，可从原文看到周末 18:00 关门 |
+| missing | WLAN 怎么用？ | `status=no_evidence`、`results=[]`，关键词没有匹配上 |
 
-`None` 和 `0` 不一样。`0 * 3` 的结果就是 0，不能用“结果为假”误判成“还没算”。
-因此代码检查 `is None`。
+`search_knowledge()` 直接复用 Day 05 的读取、切块和检索函数，最多返回两块，并保留 `source` 和 `text`。
+这使 Agent 可以把“搜索资料”当成一个工具，但检索算法没有变；Day 08 的 WLAN 失败也不会因换成 LangChain 自动消失。
 
-`TypedDict` 描述字典应有什么字段，主要帮助编辑器和类型检查；它本身不是运行时输入校验器。
+注意 `missing` 的原文其实有网络说明。`no_evidence` 在本课只表示“此次没有找到候选”，不能理解成“知识库确定没有答案”。
 
-## 4. Node：读表、做事、交回改动的函数
+## 7. 消息列表怎样读？
 
-第一次进入 `decide`：
+运行结束后的 `result["messages"]` 中，会依次出现：
 
-```python
-if state["tool_result"] is None:
-    return {"need_tool": True, "events": [{"node": "decide", "action": "tool"}]}
+| 消息类型 | 本次含义 |
+|---|---|
+| `HumanMessage` | 用户提出问题 |
+| `AIMessage`，含 `tool_calls` | 模型或替身提出工具请求；不代表工具已经执行 |
+| `ToolMessage` | 框架执行工具后得到的结果，`tool_call_id` 对应原请求编号 |
+| `AIMessage`，无工具调用 | 本轮收尾回复 |
+
+最后一句话只是过程的一部分。检查工具是否真正执行，要同时看请求和 `ToolMessage`。
+本课每次启动新建 Agent，没有配置检查点，也没有把旧消息传入下一次运行，因此不会跨命令记住历史。
+
+## 8. 有配置后再接真实模型
+
+```bash
+uv run --group langchain python -m day09.langchain_agent --ask-model "精确计算 12 乘 4。"
+uv run --group langchain python -m day09.langchain_agent --ask-model "周末几点关门？请给来源。"
 ```
 
-意思是：没结果，需要工具，并记一条事件。
-返回的只是**修改了哪些字段**，无需把 a、b 再抄一遍。
+`--ask-model` 把 `DemoChatModel` 换成 `ChatOpenAI`，沿用 Day 03 的地址、模型名和 Key 读取方式。只有走这个分支才读取凭证和发送请求，会消耗相应服务额度。
 
-进入 `multiply`：
+本课显式设置 `use_responses_api=True`，与前面的 Responses 接口保持一致。适配器名称不是服务地址：请求仍发往你的 `LLM_BASE_URL`，不是自动改用 OpenAI 服务。配置的服务需要支持对应接口及工具调用。[适配器说明](https://docs.langchain.com/oss/python/integrations/chat/openai)
 
-```python
-result = state["a"] * state["b"]
-return {"tool_result": result, "events": [{"node": "tool", "result": result}]}
-```
+真实模型下，工具名称、参数和最终文字由服务返回。核对乘法参数与结果、引用是否来自检索原文；预设实验通过不能代替这一步。
 
-完整可运行代码里的工具事件还记录工具名、参数和结果。
-回到 `decide` 时已有 75，于是把 `answer` 改成 `"75"`、`need_tool` 改成 False。
+源码还用 `ModelCallLimitMiddleware` 限制每次运行最多调用模型 4 次，超限报错；`middleware` 可以理解成围绕循环附加的控制逻辑。客户端每次尝试超时 30 秒、不自动重试，这些限制不是整个任务的总耗时上限。图步数保护另设为 30，也不等于模型调用次数。
 
-## 5. Edge：做完这一步，接着去哪？
+## 9. 真实项目里怎样选？
 
-```mermaid
-flowchart LR
-    S[开始] --> D[decide：检查结果]
-    D -->|还没算| T[tool：相乘]
-    T --> D
-    D -->|有结果| E[结束]
-```
+如果需求是“一个模型配几个工具”，可以先用 `create_agent`。当需求变成“创建草稿 → 等人批准 → 再写入”，就需要明确的状态与恢复流程，下一课开始学习怎样用 LangGraph 表达。
 
-普通边是一条固定路线：`tool → decide`。
-条件边是一处分岔：`decide → tool 或结束`。
+原有检索器、业务函数和评估用例仍可以复用。框架主要帮助组织调用，资料质量、工具权限和失败检查还要继续处理。
 
-```python
-def route(state):
-    return "tool" if state["need_tool"] else "end"
-```
+## 10. 小练习与完成标准
 
-这个函数只选路线，不做乘法、不生成答案。
-`add_conditional_edges` 把返回的标签映射到节点名或 `END`。
-
-## 6. Reducer：新事件覆盖旧事件，还是接在后面？
-
-普通字段会被新值替换：
-
-```text
-answer："" → "75"
-```
-
-但事件列表要保留经过的每一步：
-
-```text
-旧值：[检查]
-本次更新：[计算]
-希望得到：[检查, 计算]
-```
-
-代码里这一行声明“把列表接起来”：
-
-```python
-events: Annotated[list[dict], operator.add]
-```
-
-- `list[dict]`：列表，每项是字典。
-- `Annotated`：给类型补充说明。
-- `operator.add`：对列表执行加法，也就是拼接。
-
-节点只返回本次事件。若返回“全部旧事件 + 本次事件”，框架还会再拼一次，旧事件就重复了。
-
-State、节点更新、边和 reducer 的 API 依据见 [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)。
-
-## 7. compile 和 invoke 又是什么？
-
-把 `build_graph()` 分成两个动作理解：
-
-```text
-add_node / add_edge：画图、登记函数
-compile()：把登记好的图变成可运行对象
-invoke(初始数据)：真正跑一遍，并拿到最后的状态
-```
-
-仅仅 compile 不会算出 75，也不会自动调用模型。
-今天的图没有保存到磁盘；进程结束后，这次状态也结束。明天再增加保存和恢复。
-
-## 8. 有循环，为什么不会一直转？
-
-第一次 decide 没结果，去工具；工具写回结果；第二次 decide 有结果，结束。
-**退出条件是程序的一部分**。
-
-`recursion_limit=6` 另加一层兜底：图超过允许的执行步数会报错。
-它限制图的步数，不是 Python 函数递归深度，也不等于工具调用次数。
-并行图中的步数更不能按节点总数简单相加。
-
-真实 Agent 还需要工具调用次数、总时间和费用预算；这些不是写一句“不要循环”就能落实的。
-
-## 9. 三个练习，观察而不是背词
-
-1. 跑 `uv run --group workflow python -m day09.graph_demo 0 3`，应结束还是继续算？
-2. 临时把 events 的 reducer 去掉，再运行，事件会怎样？改完记得恢复。
-3. 在纸上写出第一次 decide、tool、第二次 decide 后的三个 `tool_result` 值。
+1. 把 `EXAMPLES["math"]` 的问题和参数一起改成 12×4，预设实验应看到哪个工具结果？
+2. 为什么 `--case missing` 的失败不会被 LangChain 自动修好？
+3. 只看最终回复里有“75”，能否证明框架执行过乘法？
+4. `multiply.invoke(...)` 与 `agent.invoke(...)` 的区别是什么？
 
 <details>
 <summary>参考答案</summary>
 
-1. 正常结束，答案 0，因为判断的是 None。
-2. 后一次列表更新覆盖前一次，最后通常只剩回答事件。
-3. None、75、75。
+1. 48，由真实乘法产生，再被固定模板展示。预设数据不会从问题文字中自动提取新参数。
+2. 仍使用相同关键词检索算法，没有增加语义匹配能力。
+3. 不能，还要检查工具请求、参数以及对应的 ToolMessage。
+4. 前者直接执行一个工具；后者运行模型与工具的循环。
 
 </details>
 
-## 10. 今天做到哪里就够了？
-
-能对着输出说清楚“谁改了哪个字段、为什么走这条边”就完成核心课。
-不要求今天同时学会 checkpoint、多 Agent 和流式输出。
-
-进阶：把 decide 换成 Day 04 的模型工具调用解析，让模型返回“工具请求或最终回答”。
-保留参数校验、工具执行和预算限制。只有接入后，才能把这段演示称作模型驱动的 Agent。
+能跑通三个预设实验、分清人工数据与实际执行、找到框架接手的循环，就完成主线。
+复习名词见 [课程词汇表](../GLOSSARY.md#tools)；`demo_model.py` 的继承写法只作为测试替身参考，不要求今天背下来。
 
 [上一课：Day 08](../day08/DAY08.md) · [下一课：Day 10](../day10/DAY10.md)

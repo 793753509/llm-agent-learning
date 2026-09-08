@@ -2,7 +2,9 @@
 
 local teaching integration checks; not live model quality or production load test
 
-生成时间：2026-09-07T02:17:31.866942+00:00
+来源：day21/verify.py 中人工编写的检查，由本次运行执行并判定；用例状态在临时目录创建。
+
+生成时间：2026-09-07T10:41:17.691858+00:00
 
 混合检索：False；Python：3.10.9
 
@@ -41,6 +43,6 @@ local teaching integration checks; not live model quality or production load tes
 
 延迟范围：warm local knowledge query, includes graph/logging; excludes setup, MCP, generation and HTTP
 
-10 次热运行：p50=1.28 ms，p95=1.99 ms。
+10 次热运行：p50=1.20 ms，p95=1.53 ms。
 
 这份报告未测真实模型回答质量、模型费用、跨主机认证或公网并发。

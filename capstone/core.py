@@ -11,10 +11,10 @@ from langgraph.graph import END, START, StateGraph
 from day05.rag_baseline import Chunk, build_prompt, generate_answer, retrieve
 from day07.fusion import deduplicate_text, rrf_fuse, select_context
 from day07.reranker import rerank
-from day11.client import fetch
-from day12.memory import MemoryStore
-from day14.tracing import Trace
-from day15.gateway import dispatch
+from day12.client import fetch
+from day13.memory import MemoryStore
+from day15.tracing import Trace
+from day16.gateway import dispatch
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "capstone" / "data"

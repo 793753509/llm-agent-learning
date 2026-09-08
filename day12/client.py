@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 async def interact(ticket_id: str = "T001") -> dict:
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "day11.server"],
+        args=["-m", "day12.server"],
         cwd=str(ROOT),
     )
     async with stdio_client(params) as (read, write):

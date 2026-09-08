@@ -1,5 +1,9 @@
 {
-  "scope": "lexical retrieval only; 5 teaching cases; no generation",
+  "generated_at": "2026-09-07T08:53:08.395442+00:00",
+  "dataset": "day08/datasets/rag_cases.json",
+  "knowledge": "day05/knowledge/",
+  "retriever": "day05.rag_baseline.retrieve",
+  "scope": "lexical (关键词) retrieval only; teaching cases; no generation",
   "top_k": 2,
   "answerable_count": 4,
   "unanswerable_count": 1,
@@ -15,6 +19,7 @@
       "relevant_chunk_ids": [
         "hours.md#1"
       ],
+      "purpose": "直接问周末时间：检查基本检索。",
       "retrieved": [
         "hours.md#1",
         "hours.md#2"
@@ -29,6 +34,7 @@
       "relevant_chunk_ids": [
         "services.md#2"
       ],
+      "purpose": "沿用资料中的 wifi 措辞：检查基本检索。",
       "retrieved": [
         "services.md#2"
       ],
@@ -42,6 +48,7 @@
       "relevant_chunk_ids": [
         "services.md#2"
       ],
+      "purpose": "用 WLAN 换一种说法：观察关键词漏检。",
       "retrieved": [],
       "hit": 0.0,
       "recall": 0.0,
@@ -54,6 +61,7 @@
         "hours.md#1",
         "hours.md#2"
       ],
+      "purpose": "同时问工作日和周末：需要两块证据。",
       "retrieved": [
         "hours.md#2",
         "hours.md#1"
@@ -66,6 +74,7 @@
       "id": "R5",
       "question": "火星今天多少度？",
       "relevant_chunk_ids": [],
+      "purpose": "原文没有火星温度：观察无答案题是否仍返回候选。",
       "retrieved": [
         "services.md#1"
       ],

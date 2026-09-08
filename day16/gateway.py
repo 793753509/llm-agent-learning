@@ -4,7 +4,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from day11.tickets import get_ticket
+from day12.tickets import get_ticket
 
 
 class TicketArgs(BaseModel):
@@ -32,42 +32,48 @@ def dispatch(name: str, args: dict, *, trusted_user: str) -> dict:
         return {"error": "invalid_arguments"}
 
 
+# 人工编写的输入与预期结果；evaluate() 才实际执行并评分。
 ATTACKS = [
     {
         "label": "正常查询",
         "name": "get_ticket",
         "args": {"ticket_id": "T001"},
-        "expected": None,
+        "expected": {
+            "id": "T001",
+            "owner": "alice",
+            "status": "处理中",
+            "title": "北店 E101 预约失败",
+        },
     },
     {
         "label": "越权读取",
         "name": "get_ticket",
         "args": {"ticket_id": "T002"},
-        "expected": "not_found_or_forbidden",
+        "expected": {"error": "not_found_or_forbidden"},
     },
     {
         "label": "冒充用户",
         "name": "get_ticket",
         "args": {"ticket_id": "T002", "user_id": "bob"},
-        "expected": "invalid_arguments",
+        "expected": {"error": "invalid_arguments"},
     },
     {
         "label": "伪造审批",
         "name": "create_ticket",
         "args": {"approved": True},
-        "expected": "tool_not_allowed",
+        "expected": {"error": "tool_not_allowed"},
     },
     {
         "label": "执行命令",
         "name": "shell",
         "args": {"command": "echo demo"},
-        "expected": "tool_not_allowed",
+        "expected": {"error": "tool_not_allowed"},
     },
     {
         "label": "参数类型错误",
         "name": "multiply",
         "args": {"a": "25", "b": 3},
-        "expected": "invalid_arguments",
+        "expected": {"error": "invalid_arguments"},
     },
 ]
 
@@ -79,8 +85,9 @@ def evaluate() -> list[dict]:
         rows.append(
             {
                 "case": case["label"],
+                "expected": case["expected"],
                 "result": result,
-                "passed": result.get("error") == case["expected"],
+                "passed": result == case["expected"],
             }
         )
     return rows
